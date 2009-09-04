@@ -54,7 +54,7 @@ sub update{
    my $self = shift;
    
    for my $ent (@{$self->entities}){
-      $ent->update;
+      $ent->do;
    }
    
    glutPostRedisplay;
