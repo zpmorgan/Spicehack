@@ -11,9 +11,9 @@ has 'x' => (is => 'ro', isa => 'Int');
 has 'y' => (is => 'ro', isa => 'Int');
 
 #when it must link to a nearby blob, or be elongated in some direction
-has generation_constraints => (
+has gen_constraints => (
    is => 'ro',
-   isa => 'ArrayRef'
+   isa => 'HashRef'
 );
 
 #positive or negative
@@ -30,6 +30,9 @@ has terrain => (
    lazy => 1,
    default => sub{$_[0]->generate},
 );
+
+
+
 
 
 sub generate{
@@ -49,7 +52,7 @@ sub generate{
       }
    };
    
-   for (1,2,3,4){
+   for (1..$iterations){
    #say join "\n", map{join'',@$_}@$terrain;
       @next = ();
       for my $row (1..$size-2){
@@ -61,6 +64,15 @@ sub generate{
          }
       }
       $do_borders->();
+      if ($self->gen_constraints){
+         my ($solid, $empty) = @{$self->gen_constraints}{qw/solid empty/};
+         for (@$solid){
+            my ($col,$row) = @$_;
+            #die 'blah '.@$col if 'ARRAY' eq ref $col;
+            $next[$row][$col] = 1;
+            #warn @$_;
+         }
+      }
       $terrain = [@next];
    }
    return $terrain;

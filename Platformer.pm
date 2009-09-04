@@ -19,8 +19,15 @@ my %textures;
 has 'map' => (
    is => 'rw',
    isa => 'Platformer::Map', 
-   default => sub{Platformer::Map->new(platformer=>$_[0])}
+   default => sub{Platformer::Map->new(platformer=>$_[0])},
 );
+has viewport => (
+   is => 'rw',
+   isa => 'Platformer::Map', 
+   lazy => 1,
+   default => sub{ Platformer::Viewport->new (map => $_[0]->map) },
+);
+
 has name => (is => 'ro', isa => 'Str', default=>'Spicehack');
 has window => ( is => 'rw');
 has xsize => ( is => 'ro', isa => 'Int');
