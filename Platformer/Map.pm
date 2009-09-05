@@ -10,6 +10,7 @@ use Moose;
 # blobs aren't generated until player goes there.
 # blob is frozen when player is sufficiently far
 # unfrozen blobs & their entities are to be handled as a combined unit.
+#blobs are to be connected with blobconnections
 
 has viewport => (is => 'rw', isa => 'Platformer::Viewport');
 has platformer => (is => 'ro', isa => 'Platformer');
@@ -40,6 +41,7 @@ sub entry_blob{
          (map {[$_,5]} (5..10)),
          (map {[$_,$_]} (3..8)),
       ],
+      connection => 'right',
    };
    my $blob = Platformer::Map::Blob->new(
       x=>0,'y'=>0, sign=>0,map=>$self,
@@ -60,6 +62,10 @@ sub invisible_tiles{ #remove
 sub visible_tiles{
    my $self = shift;
    my @tiles_co = $self->main_blob->get_tiles;
+}
+sub visible_entities{
+   my $self = shift;
+   my @ents = @{$self->main_blob->entities};
 }
 
 1;

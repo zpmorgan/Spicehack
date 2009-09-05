@@ -6,11 +6,12 @@ use Moose;
 #perhaps blobs should be procedurally predetermined, but not generated until player goes there.
 
 has 'map' => (is => 'ro', isa => 'Platformer::Map');
-has size => (is => 'ro', isa => 'Int', default => 16);
+has size => (is => 'ro', isa => 'Int', default => 12);
 has 'x' => (is => 'ro', isa => 'Int');
 has 'y' => (is => 'ro', isa => 'Int');
 
-#when it must link to a nearby blob, or be elongated in some direction
+#when it must link to a nearby blob, or be elongated in some direction,
+#or have certain areas as solid or space
 has gen_constraints => (
    is => 'ro',
    isa => 'HashRef'
@@ -31,8 +32,9 @@ has terrain => (
    default => sub{$_[0]->generate},
 );
 
+has entities => (is=>'ro', isa=>'ArrayRef', default=>sub{[]});
 
-
+has connections => (is=>'ro', isa=>'ArrayRef', default=>sub{[]});
 
 
 sub generate{
@@ -65,18 +67,56 @@ sub generate{
       }
       $do_borders->();
       if ($self->gen_constraints){
-         my ($solid, $empty) = @{$self->gen_constraints}{qw/solid empty/};
+         my ($solid, $empty) = @{$self->gen_constraints}{qw/solid space/};
          for (@$solid){
             my ($col,$row) = @$_;
-            #die 'blah '.@$col if 'ARRAY' eq ref $col;
             $next[$row][$col] = 1;
-            #warn @$_;
+         }
+         for (@$empty){
+            my ($col,$row) = @$_;
+            $next[$row][$col] = 0;
          }
       }
       $terrain = [@next];
    }
+   $self->decorate($terrain);
    return $terrain;
 }
+
+sub decorate{ #for now, just add 1 monster
+   my $self = shift;
+   my $terrain = shift || $self->terrain;
+   
+   my $monster = $self->map->platformer->random_monster();
+   my $h = $monster->h;
+   my $w = $monster->w;
+   my ($row,$col);
+   RANDPICK:
+   for (1..80){
+      $row =  int rand(9);
+      $col =  int rand(9);
+      warn $_ . $row . $col;
+      for my $r (0..$h-1){
+         for my $c (0..$w-1){
+            next RANDPICK if $terrain->[$row+$r][$col+$c]
+         }
+      }
+      die if $_==80;
+      last;
+   }
+   DROP:
+   for my $r ($row..$self->size - $monster->h){#move monster down in space until it hits floor
+      $row=$r;
+      for my $c (0..$w-1){
+         last DROP if $terrain->[$row+$h][$col+$c]
+      }
+   }
+   $monster->y($row);#wrong; doesnt offset with blob coordinates. 
+   $monster->x($col);
+   push @{$self->entities}, $monster;
+}
+
+
 
 sub decide_tiles{
    my $self = shift;

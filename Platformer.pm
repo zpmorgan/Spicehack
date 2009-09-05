@@ -1,6 +1,7 @@
 package Platformer;
 use Platformer::Tile;
 use Platformer::Map;
+use Platformer::Entity;
 use Modern::Perl;
 use Moose;
 
@@ -35,9 +36,13 @@ has ysize => ( is => 'ro', isa => 'Int');
 
 has entities => (is => 'ro', isa => 'ArrayRef', default => sub{[]});
 
-#initialize & set up glut & opengl stuff;
+
+has params => (is => 'ro', isa => 'HashRef', default => sub{{}});
+
 sub BUILD{
    my $self = shift;
+   
+   #initialize & set up glut & opengl stuff;
    #glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);  
    glutInitWindowSize($self->xsize,$self->ysize);
    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_ALPHA);
@@ -79,7 +84,11 @@ sub RenderScene{
    
    my @tiles = $self->map->visible_tiles;
    for (@tiles){
-      draw_tile(@$_);
+      $self->draw_tile(@$_);
+   }
+   my @ents = $self->map->visible_entities;
+   for (@ents){
+      $self->draw_entity($_);
    }
    
    glutSwapBuffers;
@@ -88,6 +97,8 @@ sub RenderScene{
 
 sub load_texture{
    my ($self,$name) = @_;
+   return $textures{$name} if defined $textures{$name};
+   
    my $n= glGenTextures_p(1); #'name' to opengl
    glBindTexture(GL_TEXTURE_2D, $n);
     #glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -106,8 +117,18 @@ sub load_texture{
    return $n;
 }
 
+sub draw_entity{
+   my ($self, $ent) = @_;
+   my $size = $ent->size * 32;
+   my $n = $ent->num;
+   my $x = $ent->x * 32;#todo: transformation in viewport class
+   my $y = $ent->y * 32;
+   draw_thing($x,$y, $size, $n);
+   #die $ent->name;
+}
+
 sub draw_tile{
-   my ($row,$col, $tile) = @_;
+   my ($self, $row,$col, $tile) = @_;
    my $size = 32;
    my $n = $tile->num;
    my $x = $col*$size;
@@ -132,7 +153,11 @@ sub draw_thing{
 }
 
 
-
+sub random_monster{
+   my ($self) = @_;
+   my $monst = Platformer::Entity->new (name => 'spartan', size=>2, platformer => $_[0]);
+   return $monst;
+}
 
 
 1;
