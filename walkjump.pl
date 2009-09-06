@@ -4,6 +4,7 @@ use Modern::Perl;
 use Platformer;
 
 my %params = (
+   main => {name => 'mrflash', size=>1},
    monsters => [{name=> 'spartan', size=>2}],
 );
 

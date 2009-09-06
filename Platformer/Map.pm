@@ -41,6 +41,7 @@ sub entry_blob{
          (map {[$_,5]} (5..10)),
          (map {[$_,$_]} (3..8)),
       ],
+      entry => [7,4],
       connection => 'right',
    };
    my $blob = Platformer::Map::Blob->new(

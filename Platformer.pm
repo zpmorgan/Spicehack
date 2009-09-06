@@ -10,13 +10,14 @@ use OpenGL::Image;
 die "You need the perlmagick" unless OpenGL::Image::HasEngine('Magick');
 
 #this has an opengl window, for starters.
-#It should somehoe handle tne entire game world. 
+#It should somehow handle the entire game world. 
 # - the map should be a complicated object, to dynamically generate 
-#      space & freeze portions as needed, and handle the viewport
+#      space & freeze portions as needed, based on viewport data
 # - I suppose the map or the viewport itself should return list of active entities as required.
 
 my %textures;
 
+has main => (is => 'rw', isa => 'Platformer::Entity');
 has 'map' => (
    is => 'rw',
    isa => 'Platformer::Map', 
@@ -29,6 +30,7 @@ has viewport => (
    default => sub{ Platformer::Viewport->new (map => $_[0]->map) },
 );
 
+
 has name => (is => 'ro', isa => 'Str', default=>'Spicehack');
 has window => ( is => 'rw');
 has xsize => ( is => 'ro', isa => 'Int');
@@ -38,6 +40,7 @@ has entities => (is => 'ro', isa => 'ArrayRef', default => sub{[]});
 
 
 has params => (is => 'ro', isa => 'HashRef', default => sub{{}});
+
 
 sub BUILD{
    my $self = shift;
@@ -51,8 +54,9 @@ sub BUILD{
    glClearColor(0.0, 0.0, 0.0, 0.0);
    glClearDepth(1.0);
    
-   #glutKeyboardFunc(\&KeyPressed);
-   #glutSpecialFunc(\&SpecialKeyPressed);
+   glutKeyboardFunc   (sub {$self->key_press(@_)} );
+   glutKeyboardUpFunc (sub {$self->key_release(@_)} );
+   #glutSpecialFunc(\&special_key_press);
    glutIdleFunc(sub{$self->update});
    glutDisplayFunc(sub{$self->RenderScene});
 }
@@ -157,6 +161,42 @@ sub random_monster{
    my ($self) = @_;
    my $monst = Platformer::Entity->new (name => 'spartan', size=>2, platformer => $_[0]);
    return $monst;
+}
+
+sub main_entity{
+   my ($self) = @_;
+   my $ent = Platformer::Entity->new (
+      name => $self->params->{main}{name},
+      size=>$self->params->{main}{size},
+      platformer => $_[0],
+   );
+   $self->main($ent);
+   return $ent;
+}
+
+has 'keys_pressed'=> (is=>'ro',isa=>'HashRef',default=>sub{{}});
+
+sub key_press{
+   my ($self, $key) = @_;
+   $key = chr $key;
+   $self->keys_pressed->{$key} = 1;
+   if ($key eq 'a'){
+      $self->main->moving('left');
+   }
+   elsif ($key eq 'd'){
+      $self->main->moving('right');
+   }
+}
+sub key_release{
+   my ($self, $key) = @_;
+   $key = chr $key;
+   $self->keys_pressed->{$key} = 0;
+   if ($key eq 'a'){
+      $self->main->stop_moving('left');
+   }
+   elsif ($key eq 'd'){
+      $self->main->stop_moving('right');
+   }
 }
 
 

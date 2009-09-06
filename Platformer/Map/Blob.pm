@@ -6,7 +6,7 @@ use Moose;
 #perhaps blobs should be procedurally predetermined, but not generated until player goes there.
 
 has 'map' => (is => 'ro', isa => 'Platformer::Map');
-has size => (is => 'ro', isa => 'Int', default => 12);
+has size => (is => 'ro', isa => 'Int', default => 15);
 has 'x' => (is => 'ro', isa => 'Int');
 has 'y' => (is => 'ro', isa => 'Int');
 
@@ -14,7 +14,8 @@ has 'y' => (is => 'ro', isa => 'Int');
 #or have certain areas as solid or space
 has gen_constraints => (
    is => 'ro',
-   isa => 'HashRef'
+   isa => 'HashRef',
+   default=>sub{{}},
 );
 
 #positive or negative
@@ -32,7 +33,9 @@ has terrain => (
    default => sub{$_[0]->generate},
 );
 
-has entities => (is=>'ro', isa=>'ArrayRef', default=>sub{[]});
+has entities => (is=>'ro', isa=>'ArrayRef', 
+   lazy=>1,
+   default=>sub {[$_[0]->default_entities]} );
 
 has connections => (is=>'ro', isa=>'ArrayRef', default=>sub{[]});
 
@@ -45,6 +48,13 @@ sub generate{
    my $terrain = [map {[map {rand() < $amountWalls || 0} (1..$size)]} (1..$size)];
    my @next;
    
+   my ($solid, $space, $entry);
+   if ($self->gen_constraints){
+      ($solid, $space, $entry) = @{$self->gen_constraints}{qw/solid space entry/};
+   }
+   $solid ||= [];
+   $space ||= [];
+   
    my $do_borders = sub{
       for (0..$size-1){
          $next[0][$_] = 1;
@@ -55,7 +65,6 @@ sub generate{
    };
    
    for (1..$iterations){
-   #say join "\n", map{join'',@$_}@$terrain;
       @next = ();
       for my $row (1..$size-2){
          for my $col (1..$size-2){
@@ -66,54 +75,79 @@ sub generate{
          }
       }
       $do_borders->();
-      if ($self->gen_constraints){
-         my ($solid, $empty) = @{$self->gen_constraints}{qw/solid space/};
-         for (@$solid){
-            my ($col,$row) = @$_;
-            $next[$row][$col] = 1;
-         }
-         for (@$empty){
-            my ($col,$row) = @$_;
-            $next[$row][$col] = 0;
-         }
+      for (@$solid){
+         my ($col,$row) = @$_;
+         $next[$row][$col] = 1;
+      }
+      for (@$space){
+         my ($col,$row) = @$_;
+         $next[$row][$col] = 0;
       }
       $terrain = [@next];
    }
-   $self->decorate($terrain);
+   #$self->decorate($terrain);
    return $terrain;
 }
 
-sub decorate{ #for now, just add 1 monster
+sub default_entities{ #for now, just add 1 monster
    my $self = shift;
-   my $terrain = shift || $self->terrain;
+   my @ents;
+   my $terrain = $self->terrain;
    
    my $monster = $self->map->platformer->random_monster();
-   my $h = $monster->h;
-   my $w = $monster->w;
+   $self->find_place_for_entity($monster, {rows=>[3,8],cols=>[3,8]} );
+   push @ents, $monster;
+   
+   my $entry = $self->gen_constraints->{entry};
+   if ($entry){
+      my ($col,$row) = @$entry;
+      my $main = $self->map->platformer->main_entity();
+      $main->x($col);
+      $main->y($row);
+      push @ents, $main;
+   }
+   
+   return @ents;
+}
+
+sub area_is_space{
+   my ($self,$row,$col,$h,$w) = @_;
+   for my $r($row..$row+$h-1){
+      for my $c($col..$col+$w-1){
+         return 0 if $self->terrain->[$r][$c];
+      }
+   }
+   1
+}
+sub find_place_for_entity{
+   my ($self,$entity, $rect) = @_;
+   my $h = $entity->h;
+   my $w = $entity->w;
+   
+   my $mincol = $rect->{cols}[0];
+   my $minrow = $rect->{rows}[0];
+   my $maxcol = $rect->{cols}[1]-$w+1;
+   my $maxrow = $rect->{rows}[1]-$h+1;
+   my $cols = $maxcol-$mincol;
+   
    my ($row,$col);
+   $col = $mincol + int rand($cols);
    RANDPICK:
-   for (1..80){
-      $row =  int rand(9);
-      $col =  int rand(9);
-      warn $_ . $row . $col;
-      for my $r (0..$h-1){
-         for my $c (0..$w-1){
-            next RANDPICK if $terrain->[$row+$r][$col+$c]
+   for (1..$cols){
+      $col = (($col-$mincol+13)%$cols)+$mincol; #lol, columns cycle randomishly
+      my $r=$maxrow;#search for space from bottom to top
+      until ($r < $minrow){
+         if ($self->area_is_space($r,$col,$h,$w)){
+            $row=$r;
+            last RANDPICK;
          }
-      }
-      die if $_==80;
-      last;
-   }
-   DROP:
-   for my $r ($row..$self->size - $monster->h){#move monster down in space until it hits floor
-      $row=$r;
-      for my $c (0..$w-1){
-         last DROP if $terrain->[$row+$h][$col+$c]
+         $r--
       }
    }
-   $monster->y($row);#wrong; doesnt offset with blob coordinates. 
-   $monster->x($col);
-   push @{$self->entities}, $monster;
+   $entity->y($row);#wrong; doesnt offset with blob coordinates. 
+   $entity->x($col);
+   return $entity;
+   #push @{$self->entities}, $entity;
 }
 
 
