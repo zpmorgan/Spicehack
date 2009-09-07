@@ -175,4 +175,10 @@ sub get_tiles{
    return @tiles;
 }
 
+sub solid_tile{
+   my ($self, $x,$y) = @_;
+   return 0 unless $self->terrain->[$y][$x];
+   return [int $x,int $y];
+}
+
 1

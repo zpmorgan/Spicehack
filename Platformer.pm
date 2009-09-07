@@ -168,7 +168,12 @@ sub draw_thing{
 
 sub random_monster{
    my ($self) = @_;
-   my $monst = Platformer::Entity->new (name => 'spartan', size=>2, platformer => $_[0]);
+   my $monst = Platformer::Entity->new (
+      name => 'gridbug', 
+      size=>1, 
+      platformer => $_[0],
+      blob => $_[0]->map->main_blob,
+   );
    return $monst;
 }
 
@@ -178,6 +183,7 @@ sub main_entity{
       name => $self->params->{main}{name},
       size => $self->params->{main}{size},
       platformer => $_[0],
+      blob => $_[0]->map->main_blob,
    );
    return $ent;
 }
@@ -196,6 +202,9 @@ sub key_press{
    elsif ($key eq 'd'){
       $self->main->begin_push('r');
    }
+   elsif ($key eq 'w'){
+      $self->main->jump();
+   }
 }
 sub key_release{
    my ($self, $key) = @_;
@@ -213,6 +222,7 @@ sub passive_motion{
    my ($self, $x,$y) = @_;
    $self->mouse_x($x);
    $self->mouse_y($y);
+   $self->main->calc_push();
    #say $x,$y
 }
 
