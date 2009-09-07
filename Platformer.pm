@@ -2,6 +2,7 @@ package Platformer;
 use Platformer::Tile;
 use Platformer::Map;
 use Platformer::Entity;
+use Platformer::Viewport;
 use Modern::Perl;
 use Moose;
 
@@ -17,17 +18,24 @@ die "You need the perlmagick" unless OpenGL::Image::HasEngine('Magick');
 
 my %textures;
 
-has main => (is => 'rw', isa => 'Platformer::Entity');
+has main => (
+   is => 'rw', isa => 'Platformer::Entity',
+   lazy=>1,
+   default => sub {$_[0]->main_entity()},
+);
 has 'map' => (
    is => 'rw',
    isa => 'Platformer::Map', 
-   default => sub{Platformer::Map->new(platformer=>$_[0])},
+   default => sub {Platformer::Map->new(platformer=>$_[0])},
 );
 has viewport => (
    is => 'rw',
-   isa => 'Platformer::Map', 
+   isa => 'Platformer::Viewport', 
    lazy => 1,
-   default => sub{ Platformer::Viewport->new (map => $_[0]->map) },
+   default => sub {Platformer::Viewport->new (
+         map => $_[0]->map, 
+         width => $_[0]->xsize,
+         height=> $_[0]->ysize)},
 );
 
 
@@ -36,7 +44,7 @@ has window => ( is => 'rw');
 has xsize => ( is => 'ro', isa => 'Int');
 has ysize => ( is => 'ro', isa => 'Int');
 
-has entities => (is => 'ro', isa => 'ArrayRef', default => sub{[]});
+#has entities => (is => 'ro', isa => 'ArrayRef', default => sub{[]});
 
 
 has params => (is => 'ro', isa => 'HashRef', default => sub{{}});
@@ -54,8 +62,10 @@ sub BUILD{
    glClearColor(0.0, 0.0, 0.0, 0.0);
    glClearDepth(1.0);
    
+   glutIgnoreKeyRepeat(1);
    glutKeyboardFunc   (sub {$self->key_press(@_)} );
    glutKeyboardUpFunc (sub {$self->key_release(@_)} );
+   glutPassiveMotionFunc (sub {$self->passive_motion(@_)} );
    #glutSpecialFunc(\&special_key_press);
    glutIdleFunc(sub{$self->update});
    glutDisplayFunc(sub{$self->RenderScene});
@@ -69,10 +79,9 @@ sub run{
 sub update{
    my $self = shift;
    
-   for my $ent (@{$self->entities}){
+   for my $ent ($self->map->visible_entities){
       $ent->do;
    }
-   
    glutPostRedisplay;
 }
 
@@ -167,24 +176,25 @@ sub main_entity{
    my ($self) = @_;
    my $ent = Platformer::Entity->new (
       name => $self->params->{main}{name},
-      size=>$self->params->{main}{size},
+      size => $self->params->{main}{size},
       platformer => $_[0],
    );
-   $self->main($ent);
    return $ent;
 }
 
-has 'keys_pressed'=> (is=>'ro',isa=>'HashRef',default=>sub{{}});
+has keys_pressed => (is=>'ro',isa=>'HashRef',default=>sub{{}});
+has mouse_x => (is=>'rw',isa=>'Int', default=>200);
+has mouse_y => (is=>'rw',isa=>'Int', default=>200);
 
 sub key_press{
    my ($self, $key) = @_;
    $key = chr $key;
    $self->keys_pressed->{$key} = 1;
    if ($key eq 'a'){
-      $self->main->moving('left');
+      $self->main->begin_push('l');
    }
    elsif ($key eq 'd'){
-      $self->main->moving('right');
+      $self->main->begin_push('r');
    }
 }
 sub key_release{
@@ -192,12 +202,18 @@ sub key_release{
    $key = chr $key;
    $self->keys_pressed->{$key} = 0;
    if ($key eq 'a'){
-      $self->main->stop_moving('left');
+      $self->main->stop_push('l');
    }
    elsif ($key eq 'd'){
-      $self->main->stop_moving('right');
+      $self->main->stop_push('r');
    }
 }
 
+sub passive_motion{
+   my ($self, $x,$y) = @_;
+   $self->mouse_x($x);
+   $self->mouse_y($y);
+   #say $x,$y
+}
 
 1;

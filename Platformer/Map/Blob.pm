@@ -101,7 +101,7 @@ sub default_entities{ #for now, just add 1 monster
    my $entry = $self->gen_constraints->{entry};
    if ($entry){
       my ($col,$row) = @$entry;
-      my $main = $self->map->platformer->main_entity();
+      my $main = $self->map->platformer->main;
       $main->x($col);
       $main->y($row);
       push @ents, $main;
@@ -144,6 +144,7 @@ sub find_place_for_entity{
          $r--
       }
    }
+   die 'boo' unless defined $row;
    $entity->y($row);#wrong; doesnt offset with blob coordinates. 
    $entity->x($col);
    return $entity;
