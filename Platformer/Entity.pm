@@ -102,16 +102,22 @@ sub apply_friction{
 }
 sub apply_gravity{
    my $self = shift;
-   if ('in air' eq 0){
+   #if ('in air' eq 0){
       $self->vmoment($self->vmoment + .2)
-   }
+   #}
 }
 sub jump{
    my $self = shift;
    $self->vmoment(-2);
 }
 
-sub terrain_collisions{ #should this be in blob.pm? 
+#todo: track other blobs
+sub terrain_collisions{
+   my $self = shift;
+   return $self->blob->terrain_collisions ($self);
+}
+   
+sub terrain_collisioeeee{ #should this be in blob.pm! being mov'd
    # This will return the imaginary wall that entity crashes against.
    my $self = shift;
    my $hmoment = $self->hmoment;
@@ -143,11 +149,17 @@ sub terrain_collisions{ #should this be in blob.pm?
       }
    }
 }
+
+sub on_ground{
+   my $self = shift;
+   return 1 if $self->physical_state eq 'walking'; #sucks
+}
+
 sub do{
    my $self = shift;
    $self->apply_friction;
    $self->apply_push;
-   $self->apply_gravity;
+   $self->apply_gravity unless $self->on_ground;
    
    my ($walldir, $wall) = $self->terrain_collisions();
    $walldir ||= '';

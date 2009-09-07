@@ -181,4 +181,46 @@ sub solid_tile{
    return [int $x,int $y];
 }
 
+#this basically detects if ent is running into a tile, and we consider it a wall..
+sub terrain_collisions{
+   my ($self, $ent) = @_;
+   my ($hwall,$vwall);
+   my $hmoment = $self->hmoment;
+   my $vmoment = $self->vmoment;
+   
+   return unless $hmoment or $vmoment;#no movement
+   
+   my $w = $self->size; #todo: effective w,h etc
+   my $h = $self->size; 
+   my $x1 = $self->x;
+   my $x2 = $x1+$w;
+   my $y1 = $self->y; 
+   my $y2 = $y1+$h;
+   
+   my @primary;
+   my @secondary;
+   
+   
+   if ($hmoment && $vmoment){
+      if ($hmoment*$vmoment < 0){ #secondary is x=y, primary =~ [0,1] or [1,0]
+         push @secondary, [$x1,$y1], [$x2,$y2];
+         push @primary, ($vmoment < 0) ? [$x2,$y1] : [$x1,$y2];
+      else {#  ($hmoment*$vmoment > 0){ #secondary is x=-y, primary =~ [1,1] or [0,0]
+         push @secondary, [$x1,$y2], [$x2,$y1];
+         push @primary, ($vmoment < 0) ? [$x1,$y1] : [$x2,$y2];
+      }
+   }
+   elsif ($hmoment){
+      if ($hmoment<0){
+         push @primary, [$x1,$y1], [$x1,$y2]
+      }
+      else{
+         push @primary, [$x2,$y1], [$x2,$y2]
+      }
+   }else{ #vmoment
+      
+   }
+   return ($hwall,$vwall)
+}
+
 1
