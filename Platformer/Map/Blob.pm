@@ -177,50 +177,67 @@ sub get_tiles{
 
 sub solid_tile{
    my ($self, $x,$y) = @_;
-   return 0 unless $self->terrain->[$y][$x];
-   return [int $x,int $y];
+   $x=int($x);
+   $y=int($y);
+   #outside blob?:
+   return  if $y<0 or $x<0 
+      or $y > $#{$self->terrain}
+      or $x > @{$self->terrain->[$y]};
+   return  unless $self->terrain->[$y][$x];
+   return ($x,$y);
 }
 
 #this basically detects if ent is running into a tile, and we consider it a wall..
 sub terrain_collisions{
-   my ($self, $ent) = @_;
-   my ($hwall,$vwall);
-   my $hmoment = $self->hmoment;
-   my $vmoment = $self->vmoment;
+   #my ($self, $ent, $mult) = @_;
+   my ($self, $x1,$x2,$y1,$y2, $hm,$vm) = @_;
+   #$mult is less than one if we've already collided this frame, and need to use up remaining juice
+   #$mult //= 1;
+   #my $hmoment = $self->hmoment;
+   #my $vmoment = $self->vmoment;
    
-   return unless $hmoment or $vmoment;#no movement
+   return unless $hm or $vm;#no movement
    
-   my $w = $self->size; #todo: effective w,h etc
-   my $h = $self->size; 
-   my $x1 = $self->x;
-   my $x2 = $x1+$w;
-   my $y1 = $self->y; 
-   my $y2 = $y1+$h;
-   
-   my @primary;
-   my @secondary;
+   my @h_pts;
+   my @v_pts;
+   my @hv_pts;
    
    
-   if ($hmoment && $vmoment){
-      if ($hmoment*$vmoment < 0){ #secondary is x=y, primary =~ [0,1] or [1,0]
-         push @secondary, [$x1,$y1], [$x2,$y2];
-         push @primary, ($vmoment < 0) ? [$x2,$y1] : [$x1,$y2];
-      else {#  ($hmoment*$vmoment > 0){ #secondary is x=-y, primary =~ [1,1] or [0,0]
-         push @secondary, [$x1,$y2], [$x2,$y1];
-         push @primary, ($vmoment < 0) ? [$x1,$y1] : [$x2,$y2];
+   if ($hm < 0){ 
+      push @h_pts, [$x1,$y1], [$x1,$y2];
+   } elsif ($hm > 0) {
+      push @h_pts, [$x2,$y1], [$x2,$y2];
+   }
+   if ($vm < 0){ 
+      push @v_pts, [$x1,$y1], [$x2,$y1];
+   } elsif ($vm > 0) {
+      push @v_pts, [$x1,$y2], [$x2,$y2];
+   }
+   for my $h (@h_pts){ #cheat to find leading diagonal pt, if there's hm and vm,
+      push @hv_pts, grep {$_->[0]==$h->[0] and $_->[1]==$h->[1]} @v_pts;
+   }
+   
+   my $dir;
+   my $loc;
+   my $portion;
+   
+   for my $pt (@h_pts) { #look for vertical wall, in h direction
+      my ($tx,$ty) = $self->solid_tile($pt->[0]+$hm, $pt->[1]);
+      if (defined $tx){
+         $dir = 'v';
+         $loc = ($hm > 0) ? $tx : $tx+1;
+         $portion = ($pt->[0]-$loc) / $hm;
       }
    }
-   elsif ($hmoment){
-      if ($hmoment<0){
-         push @primary, [$x1,$y1], [$x1,$y2]
+   for my $pt (@v_pts) { #look for horizontal wall, in v direction
+      my ($tx,$ty) = $self->solid_tile($pt->[0], $pt->[1]+$vm);
+      if (defined $tx){
+         $dir = 'h';
+         $loc = ($vm > 0) ? $ty : $ty+1;
+         $portion = ($pt->[1]-$loc) / $vm;
       }
-      else{
-         push @primary, [$x2,$y1], [$x2,$y2]
-      }
-   }else{ #vmoment
-      
    }
-   return ($hwall,$vwall)
+   return ($dir,$loc,$portion);
 }
 
 1

@@ -100,54 +100,16 @@ sub apply_friction{
       $self->hmoment ($hmoment+.01)
    }
 }
+my $max_gravity_speed = .5;
+
 sub apply_gravity{
    my $self = shift;
-   #if ('in air' eq 0){
-      $self->vmoment($self->vmoment + .2)
-   #}
+   $self->vmoment($self->vmoment + .03);
+   $self->vmoment($max_gravity_speed) if $self->vmoment > $max_gravity_speed;
 }
 sub jump{
    my $self = shift;
    $self->vmoment(-2);
-}
-
-#todo: track other blobs
-sub terrain_collisions{
-   my $self = shift;
-   return $self->blob->terrain_collisions ($self);
-}
-   
-sub terrain_collisioeeee{ #should this be in blob.pm! being mov'd
-   # This will return the imaginary wall that entity crashes against.
-   my $self = shift;
-   my $hmoment = $self->hmoment;
-   my $vmoment = $self->vmoment;
-   my $terrain = $self->blob->terrain;
-   
-   my ($walldir, $wall);
-   if ($hmoment and $vmoment){ #diagonal!
-      
-   }
-   elsif ($hmoment){
-      
-   }
-   elsif ($vmoment){
-      my @points;
-      if ($vmoment<0){ #up; from the top
-         @points = map {[$self->x+$_, $self->y+$vmoment]} (0..$self->size);
-         for (@points){
-            my $tile = $self->blob->solid_tile(@$_);
-            return ('h',$tile->[1]+1) if $tile;
-         }
-      }
-      else{#from the bottom
-         @points = map {[$self->x+$_, $self->y+$self->size+$vmoment]} (0..$self->size);
-         for (@points){
-            my $tile = $self->blob->solid_tile(@$_);
-            return ('h',$tile->[1]) if $tile;
-         }
-      }
-   }
 }
 
 sub on_ground{
@@ -155,22 +117,28 @@ sub on_ground{
    return 1 if $self->physical_state eq 'walking'; #sucks
 }
 
+sub apply_momentum_with_terrain_collisions{
+   my $self = shift;
+   my $rem = 1;
+   while (1){
+      my ($dir,$loc, $portion) = $self->blob->terrain_collisions( 
+         $self->x, $self->x+$self->size,
+         $self->y, $self->y+$self->size,
+         $self->hmoment * $rem, $self->vmoment * $rem,
+      );
+      $self->x($self->x + ($self->hmoment * $rem * ($portion || 1)));
+      $self->y($self->y + ($self->vmoment * $rem * ($portion || 1)));
+      $rem *= (1-$portion) if $portion;
+      last unless defined $dir;
+   }
+}
+
 sub do{
    my $self = shift;
    $self->apply_friction;
    $self->apply_push;
-   $self->apply_gravity unless $self->on_ground;
-   
-   my ($walldir, $wall) = $self->terrain_collisions();
-   $walldir ||= '';
-   $self->x($self->x + $self->hmoment);
-   if ($walldir eq 'h') {
-      $self->y ($wall - ($self->vmoment>0)?1:0 );
-      $self->vmoment(0);
-   } else {
-      $self->y($self->y + $self->vmoment);
-   }
-      
+   $self->apply_gravity;# unless $self->on_ground;
+   $self->apply_momentum_with_terrain_collisions();
 }
 
 1
