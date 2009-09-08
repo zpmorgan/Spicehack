@@ -202,7 +202,6 @@ sub terrain_collisions{
    my @v_pts;
    my @hv_pts;
    
-   
    if ($hm < 0){ 
       push @h_pts, [$x1,$y1], [$x1,$y2];
    } elsif ($hm > 0) {
