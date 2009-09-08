@@ -71,7 +71,7 @@ sub calc_push{
       $force = .05 if $force<.05;
    }
    else {die 'r-l push:' . $push }
-   warn $force;
+  # warn $force;
    $self->forces->{push} = $force;
 }
 
@@ -129,7 +129,17 @@ sub apply_momentum_with_terrain_collisions{
       $self->x($self->x + ($self->hmoment * $rem * ($portion || 1)));
       $self->y($self->y + ($self->vmoment * $rem * ($portion || 1)));
       $rem *= (1-$portion) if $portion;
+      
       last unless defined $dir;
+      #bounce or stop or what when hitting a wall?
+      if($dir eq 'v'){
+         $self->x ($loc + ($self->hmoment>0) ? -1 : 0);
+         $self->hmoment (0);
+      }
+      if($dir eq 'h'){
+         $self->y ($loc + (($self->vmoment>0) ? -1 : 0));
+         $self->vmoment (0);
+      }
    }
 }
 
