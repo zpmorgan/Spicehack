@@ -10,7 +10,7 @@ has height => (is => 'ro', isa => 'Int');
 has width  => (is => 'ro', isa => 'Int');
 
 #what does this viewport follow?
-has tracking => (is => 'ro',isa=>'Platformer::Entity', default => sub{$_[0]->map->platformer->main} );
+has tracking => (is => 'ro',isa=>'Platformer::Entity', lazy=>1, default => sub{$_[0]->map->platformer->main} );
 
 #for now, track main in the very center of view
 sub update{

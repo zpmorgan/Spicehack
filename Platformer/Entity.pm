@@ -58,8 +58,8 @@ sub calc_push{
    #forcefulness=pixels to one side (in direction of push)
    my $force;
    if ($push==-1){
-      my $forcefulness = $self->platformer->mouse_x - $mid_x; # - $self->platformer->viewport->width;
-      $force = $forcefulness * .3 / $mid_x;warn $force;
+      my $forcefulness = $self->platformer->mouse_x - $mid_x;
+      $force = $forcefulness * .3 / $mid_x; #warn $force;
       $force = -.3 if $force < -.3;
       $force = -.05 if $force > -.05;
    }
@@ -83,6 +83,7 @@ sub apply_push{
    }
    $hmoment += $self->forces->{push};
    $self->hmoment($hmoment);
+   #warn $self->vmoment;
 }
 
 sub apply_friction{
@@ -100,12 +101,15 @@ sub apply_friction{
       $self->hmoment ($hmoment+.01)
    }
 }
-my $max_gravity_speed = .5;
+#my $max_gravity_speed = .5;
+
+sub GRAVITY {.02}
+sub MAX_FALL{.3}
 
 sub apply_gravity{
    my $self = shift;
-   $self->vmoment($self->vmoment + .03);
-   $self->vmoment($max_gravity_speed) if $self->vmoment > $max_gravity_speed;
+   $self->vmoment($self->vmoment + GRAVITY());
+   $self->vmoment(MAX_FALL()) if $self->vmoment > MAX_FALL();
 }
 sub jump{
    my $self = shift;
@@ -121,16 +125,16 @@ sub apply_momentum_with_terrain_collisions{
    my $self = shift;
    my $rem = 1;
    while (1){
-      my ($dir,$loc, $portion) = $self->blob->terrain_collisions( 
-         $self->x, $self->x+$self->size,
-         $self->y, $self->y+$self->size,
+      my ($dir,$loc, $portion) = $self->blob->terrain_collision( 
+         $self->x, $self->y,
+         $self->x+$self->size, $self->y+$self->size,
          $self->hmoment * $rem, $self->vmoment * $rem,
       );
-      $self->x($self->x + ($self->hmoment * $rem * ($portion || 1)));
-      $self->y($self->y + ($self->vmoment * $rem * ($portion || 1)));
-      $rem *= (1-$portion) if $portion;
-      
-      last unless defined $dir;
+      #print STDERR "($dir $loc $portion)\n" if $portion; 
+      $self->x($self->x + ($self->hmoment * $rem * ($portion // 1)));
+      $self->y($self->y + ($self->vmoment * $rem * ($portion // 1)));
+      $rem *= (1-$portion);
+      last if $portion == 1;#careful
       #bounce or stop or what when hitting a wall?
       if($dir eq 'v'){
          $self->x ($loc + ($self->hmoment>0) ? -1 : 0);
@@ -145,10 +149,15 @@ sub apply_momentum_with_terrain_collisions{
 
 sub do{
    my $self = shift;
-   $self->apply_friction;
-   $self->apply_push;
-   $self->apply_gravity;# unless $self->on_ground;
+      #print STDERR "in do, before collisions: (y, moment) = (". $self->y .", ". $self->vmoment .")\n";
    $self->apply_momentum_with_terrain_collisions();
+      #print STDERR "in do, before push: (y, moment) = (". $self->y .", ". $self->vmoment .")\n";
+   $self->apply_push;
+      #print STDERR "in do, before friction: (y, moment) = (". $self->y .", ". $self->vmoment .")\n";
+   $self->apply_friction;
+      #print STDERR "in do, before gravity: (y, moment) = (". $self->y .", ". $self->vmoment .")\n";
+   $self->apply_gravity;# unless $self->on_ground;
+      #print STDERR "in do, after gravity: (y, moment) = (". $self->y .", ". $self->vmoment .")\n\n";
 }
 
 1

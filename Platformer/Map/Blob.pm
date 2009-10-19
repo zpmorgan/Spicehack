@@ -7,7 +7,7 @@ use Moose;
 
 has 'map' => (is => 'ro', isa => 'Platformer::Map');
 has size => (is => 'ro', isa => 'Int', default => 15);
-has 'x' => (is => 'ro', isa => 'Int');
+has 'x' => (is => 'ro', isa => 'Int'); #x,y should bot be used. position is all relative.
 has 'y' => (is => 'ro', isa => 'Int');
 
 #when it must link to a nearby blob, or be elongated in some direction,
@@ -188,15 +188,16 @@ sub solid_tile{
 }
 
 #this basically detects if ent is running into a tile, and we consider it a wall..
-sub terrain_collisions{
-   #my ($self, $ent, $mult) = @_;
-   my ($self, $x1,$x2,$y1,$y2, $hm,$vm) = @_;
-   #$mult is less than one if we've already collided this frame, and need to use up remaining juice
-   #$mult //= 1;
-   #my $hmoment = $self->hmoment;
-   #my $vmoment = $self->vmoment;
+#returns ($dir, $loc, $portion)
+# $dir = 'h' or 'v'..floor or ceiling->h, vertical wall->v
+# $loc = location (in blob) of collision line
+# $portion = when in this frame the collision occurs. determined by rect position, $loc, and momentum  
+sub terrain_collision{
+   my ($self, $x1,$y1,$x2,$y2, $hm,$vm) = @_;
+   #$hm,$vm == movement or momentum == distance traversed over this frame assuming no collision
    
-   return unless $hm or $vm;#no movement
+   return (0,0,1) unless $hm or $vm;#no movement
+   my ($nearest_dir,$nearest_loc,$nearest_portion) = (0,0,1); #careful with starting values?
    
    my @h_pts;
    my @v_pts;
@@ -216,27 +217,30 @@ sub terrain_collisions{
       push @hv_pts, grep {$_->[0]==$h->[0] and $_->[1]==$h->[1]} @v_pts;
    }
    
-   my $dir;
-   my $loc;
-   my $portion;
-   
    for my $pt (@h_pts) { #look for vertical wall, in h direction
       my ($tx,$ty) = $self->solid_tile($pt->[0]+$hm, $pt->[1]);
       if (defined $tx){
-         $dir = 'v';
-         $loc = ($hm > 0) ? $tx : $tx+1;
-         $portion = ($pt->[0]-$loc) / $hm;
+         my $dir = 'v';
+         my $loc = ($hm > 0) ? $tx : $tx+1;
+         my $portion = abs(($pt->[0]-$loc) / $hm);
+         if ($portion < $nearest_portion){
+            ($nearest_dir,$nearest_loc,$nearest_portion) = ($dir,$loc,$portion);
+         }
       }
    }
    for my $pt (@v_pts) { #look for horizontal wall, in v direction
       my ($tx,$ty) = $self->solid_tile($pt->[0], $pt->[1]+$vm);
       if (defined $tx){
-         $dir = 'h';
-         $loc = ($vm > 0) ? $ty : $ty+1;
-         $portion = ($pt->[1]-$loc) / $vm;
+         my $dir = 'h';
+         my $loc = ($vm > 0) ? $ty : $ty+1;
+         my $portion = abs(($pt->[1]-$loc) / $vm);
+         #warn "my $portion = abs(($pt->[1]-$loc) / $vm);";
+         if ($portion < $nearest_portion){
+            ($nearest_dir,$nearest_loc,$nearest_portion) = ($dir,$loc,$portion);
+         }
       }
    }
-   return ($dir,$loc,$portion);
+   return ($nearest_dir,$nearest_loc,$nearest_portion);
 }
 
 1
